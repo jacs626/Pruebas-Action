@@ -1,0 +1,49 @@
+name: CI/CD Pipeline - Node.js with SonarQube and Security Checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+
+jobs:
+  build-test-analyze:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clonar repositorio
+        uses: actions/checkout@v3
+
+      - name: Usar Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Cachear dependencias npm
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Instalar dependencias
+        run: npm install
+
+      - name: Ejecutar tests con Jest
+        run: npm test
+
+      - name: Escanear codigo con SonarQube Cloud Scan
+        uses: SonarSource/sonarcloud-github-action@v5.0.0
+
+      - name: 'Dependency Review'
+        uses: actions/dependency-review-action@v4
+      
+      - name: Reportar éxito
+        if: success()
+        run: echo "✅ API funcional"
+
+      - name: Reportar error
+        if: failure()
+        run: echo "Falla detectada"
