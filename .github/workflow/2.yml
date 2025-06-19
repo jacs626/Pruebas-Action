@@ -1,0 +1,81 @@
+name: CI/CD Pipeline - Node.js with SonarQube and Security Checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  SONAR_PROJECT_KEY: transchile_project
+  SONAR_HOST_URL: https://sonarqube.example.com
+  SONAR_LOGIN: ${{ secrets.SONAR_TOKEN }}
+  EMAIL_TO: equipo@transchile.cl
+
+jobs:
+  build-test-analyze:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v3
+
+      - name: Cache npm
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Instalar dependencias
+        run: npm install
+
+      - name: Ejecutar tests con Jest
+        run: npm test
+
+      - name: Análisis de calidad con SonarQube
+        uses: sonarsource/sonarcloud-github-action@v1
+        with:
+          projectKey: ${{ env.SONAR_PROJECT_KEY }}
+          hostUrl: ${{ env.SONAR_HOST_URL }}
+          login: ${{ env.SONAR_LOGIN }}
+
+      - name: OWASP Dependency-Check
+        uses: jeremylong/DependencyCheck@v2.0.1
+        with:
+          project: transchile-nodejs
+          scan: "."
+          format: "ALL"
+          failOnCVSS: "7" # Falla si se detectan vulnerabilidades con CVSS >= 7
+
+      - name: Enviar correo electrónico en caso de éxito
+        if: success()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.example.com
+          server_port: 587
+          username: ci@transchile.cl
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: "CI/CD Éxito: Build y pruebas completas"
+          body: "El pipeline de CI/CD en TransChile ha finalizado correctamente."
+          to: ${{ env.EMAIL_TO }}
+          from: ci@transchile.cl
+
+      - name: Enviar correo electrónico en caso de fallo
+        if: failure()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.example.com
+          server_port: 587
+          username: ci@transchile.cl
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: "CI/CD Falló: Revisar pipeline"
+          body: "El pipeline de CI/CD en TransChile ha fallado. Revisa los logs para más detalles."
+          to: ${{ env.EMAIL_TO }}
+          from: ci@transchile.cl
