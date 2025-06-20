@@ -1,0 +1,1 @@
+(()=>{var r={939:r=>{console.log(sumar(4,7)),r.exports=function(r,o){return r+o}}},o={};!function t(e){var n=o[e];if(void 0!==n)return n.exports;var s=o[e]={exports:{}};return r[e](s,s.exports,t),s.exports}(939)})();
